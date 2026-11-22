@@ -74,7 +74,8 @@ function parseViewport(str, fallback = { width: 1280, height: 800 }) {
  *    (z. B. Tauri unter Windows) an und nimmt die passende vorhandene Seite.
  */
 async function openTarget(args) {
-  const { chromium } = loadPlaywright();
+  const pw = loadPlaywright();
+  const { chromium } = pw;
   const viewport = parseViewport(args.viewport);
 
   if (args.cdp) {
@@ -96,20 +97,94 @@ async function openTarget(args) {
 
   if (!args.url) throw new Error('Bitte --url <adresse> angeben (oder --cdp <endpoint>).');
 
-  const browser = await chromium.launch({
-    headless: !args.headed,
-    slowMo: args.slowmo ? Number(args.slowmo) : 0,
-  });
+  const browserName = browserType(args.browser);
+  let browser;
+  try {
+    browser = await pw[browserName].launch({ headless: !args.headed, slowMo: args.slowmo ? Number(args.slowmo) : 0 });
+  } catch (e) {
+    if (/Executable doesn't exist|install/i.test(e.message)) {
+      console.error(`Browser "${browserName}" ist nicht installiert: npx playwright install ${browserName}`);
+      process.exit(2);
+    }
+    throw e;
+  }
   const contextOptions = { viewport, ignoreHTTPSErrors: true };
+  if (args.device) {
+    const d = pw.devices[String(args.device)];
+    if (!d) throw new Error(`Unbekanntes Gerät "${args.device}". Beispiele: "iPhone 13", "iPad Pro 11", "Desktop Safari", "Pixel 7"`);
+    Object.assign(contextOptions, d);
+  }
   if (args['storage-state']) contextOptions.storageState = String(args['storage-state']);
-  if (args.locale) contextOptions.locale = String(args.locale);
+  contextOptions.locale = args.locale ? String(args.locale) : 'de-DE';
+  if (args.timezone) contextOptions.timezoneId = String(args.timezone);
+  if (args.header) {
+    // --header "Authorization: Bearer xyz" (mehrere mit ; trennen)
+    contextOptions.extraHTTPHeaders = Object.fromEntries(
+      String(args.header).split(';').map((h) => h.split(/:(.*)/s).map((x) => x.trim())).filter(([k]) => k)
+    );
+  }
   const context = await browser.newContext(contextOptions);
   // z. B. ein Tauri-Mock (siehe references/tauri.md), das vor dem App-Code geladen wird
   if (args['init-script']) await context.addInitScript({ path: path.resolve(String(args['init-script'])) });
   const page = await context.newPage();
   await page.goto(String(args.url), { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
-  return { browser, context, page, attached: false, close: () => browser.close() };
+  return { browser, context, page, attached: false, browserName, close: () => browser.close() };
+}
+
+// --browser chromium | firefox | webkit (Alias: safari, chrome, edge)
+function browserType(name) {
+  const n = String(name || 'chromium').toLowerCase();
+  if (['webkit', 'safari'].includes(n)) return 'webkit';
+  if (['firefox', 'ff'].includes(n)) return 'firefox';
+  return 'chromium';
+}
+
+/**
+ * Sucht sichtbare Texte, die für Benutzer unverständlich sind: Stacktraces, "[object Object]",
+ * "undefined"/"NaN" in Texten, rohes JSON, HTTP-Codes ohne Erklärung, englische Technikmeldungen.
+ * Läuft im Browser; gibt [{ text, reason, el }] zurück.
+ */
+async function findCrypticTexts(page) {
+  return page
+    .evaluate(() => {
+      const RULES = [
+        [/\[object (Object|Promise|HTMLElement)\]/, 'Programmobjekt statt Text ([object …])'],
+        [/(^|[\s:(])(undefined|null|NaN)([\s,.)]|$)/, 'undefined/null/NaN im angezeigten Text'],
+        [/\bat [\w$.<>]+ \(?[\w/:.-]+:\d+:\d+\)?/, 'Stacktrace sichtbar'],
+        [/(TypeError|ReferenceError|SyntaxError|SQLITE_|ECONNREFUSED|ERR_[A-Z_]+|Exception|Traceback)/, 'technische Fehlermeldung sichtbar'],
+        [/^\s*[{[]\s*"[\w-]+"\s*:/, 'rohes JSON sichtbar'],
+        [/\b(Error|Status(code)?)\s*:?\s*[45]\d\d\b/i, 'HTTP-Statuscode ohne verständliche Erklärung'],
+        [/\b(Internal Server Error|Bad Request|Unprocessable Entity|Request failed|Failed to fetch|Network Error|Something went wrong|Unexpected token)\b/i, 'englische/technische Standardmeldung'],
+        [/\{\{\s*[\w.]+\s*\}\}|\$\{[\w.]+\}|%[sd]\b/, 'Platzhalter nicht ersetzt'],
+        [/^[a-z][a-zA-Z]*(\.[a-z][a-zA-Z_]*){2,}$(?<!\.(com|de|org|net|io|eu|html|js|json|pdf|csv))/, 'Übersetzungsschlüssel statt Text'],
+      ];
+      const out = [];
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const seen = new Set();
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const el = node.parentElement;
+        if (!el || ['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE', 'TEXTAREA'].includes(el.tagName)) continue;
+        const text = node.textContent.trim();
+        if (!text || text.length < 3 || seen.has(text)) continue;
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        if (r.width === 0 || r.height === 0 || cs.visibility === 'hidden' || cs.display === 'none') continue;
+        for (const [re, reason] of RULES) {
+          if (re.test(text)) {
+            seen.add(text);
+            let d = el.tagName.toLowerCase();
+            if (el.id) d += '#' + el.id;
+            else if (el.classList.length) d += '.' + [...el.classList].slice(0, 2).join('.');
+            out.push({ text: text.slice(0, 200), reason, el: d });
+            break;
+          }
+        }
+      }
+      return out;
+    })
+    .catch(() => []);
 }
 
 /**
@@ -160,4 +235,6 @@ module.exports = {
   openTarget,
   attachMonitors,
   writeJson,
+  browserType,
+  findCrypticTexts,
 };

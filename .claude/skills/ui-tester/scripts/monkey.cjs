@@ -13,7 +13,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { parseArgs, ensureDir, defaultOutDir, openTarget, attachMonitors, writeJson } = require('./_common.cjs');
+const { parseArgs, ensureDir, defaultOutDir, openTarget, attachMonitors, writeJson, findCrypticTexts } = require('./_common.cjs');
 
 // ---------- Zufall mit Seed (mulberry32) ----------
 function rng(seed) {
@@ -147,8 +147,22 @@ const describe = (c) => `${c.tag}${c.type ? `[${c.type}]` : ''}${c.role ? `(role
     pendingShots.push(issue);
   };
 
+  // Beobachtete API-Aufrufe (für den API-Test T12): Methode + Pfad mit IDs als :id
+  const apiCalls = new Map();
   const wire = (p) => {
     attachMonitors(p, onIssue, { ignore: args.ignore });
+    p.on('response', (res) => {
+      const req = res.request();
+      if (!['xhr', 'fetch'].includes(req.resourceType())) return;
+      let u;
+      try { u = new URL(req.url()); } catch (_) { return; }
+      const tpl = u.pathname.replace(/\/\d+(?=\/|$)/g, '/:id').replace(/\/[0-9a-f]{8}-[0-9a-f-]{27,}(?=\/|$)/gi, '/:id');
+      const key = `${req.method()} ${u.origin}${tpl}`;
+      const e = apiCalls.get(key) || { method: req.method(), url: `${u.origin}${tpl}`, example: req.url(), statuses: {}, body: null };
+      e.statuses[res.status()] = (e.statuses[res.status()] || 0) + 1;
+      if (!e.body && req.postData()) e.body = req.postData().slice(0, 2000);
+      apiCalls.set(key, e);
+    });
     p.on('dialog', async (d) => {
       const accept = R.chance(0.5);
       log.push({ step, action: `Dialog (${d.type()}) "${d.message().slice(0, 80)}" → ${accept ? 'OK' : 'Abbrechen'}` });
@@ -179,6 +193,7 @@ const describe = (c) => `${c.tag}${c.type ? `[${c.type}]` : ''}${c.role ? `(role
       }))
       .catch(() => null);
     if (!state) return;
+    for (const c of await findCrypticTexts(page)) onIssue('cryptic-text', `Unverständlicher Text (${c.reason}): "${c.text.slice(0, 120)}" in ${c.el}`, {});
     if (state.xss) {
       onIssue('xss', `Eingabe wurde als HTML/JavaScript ausgeführt (Köder "${state.xss}") – HTML-Injection/XSS`, {});
       await page.evaluate(() => delete window.__uiTesterXss).catch(() => {});
@@ -387,6 +402,7 @@ const describe = (c) => `${c.tag}${c.type ? `[${c.type}]` : ''}${c.role ? `(role
     durationSec: Math.round((Date.now() - t0) / 1000),
     reproduce: `node ${__filename} --url ${startUrl} --seed ${seed} --steps ${stepsDone}`,
     issues: list,
+    apiCalls: [...apiCalls.values()],
     actions: log,
   };
   writeJson(path.join(outDir, 'report.json'), report);

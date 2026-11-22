@@ -1,6 +1,6 @@
 # T1 – Erkundung
 
-**Ziel:** Die App kennenlernen, bevor du testest: Welche Seiten, Abläufe, Daten und Risiken gibt es? Ergebnis ist eine Testlandkarte, aus der du ableitest, welche Testarten T2–T9 wie tief nötig sind. Bei der Erkundung fallen außerdem oft schon die ersten Fehler auf.
+**Ziel:** Die App kennenlernen, bevor du testest: Welche Seiten, Abläufe, Daten und Risiken gibt es? Ergebnis ist eine Testlandkarte, aus der du ableitest, welche Testarten T2–T16 wie tief nötig sind. Bei der Erkundung fallen außerdem oft schon die ersten Fehler auf.
 
 **Werkzeug:** `scripts/inventory.cjs`, Screenshots ansehen, Quellcode lesen.
 
@@ -13,10 +13,11 @@
 ```markdown
 | Bereich / Ablauf | Daten (wo gespeichert) | Risiko | Testarten |
 |---|---|---|---|
-| Zeiteintrag anlegen/bearbeiten | API /api/entries → DB | hoch (Kernfunktion) | T2 T3 T4 T7 |
-| Einstellungen | localStorage "settings" | mittel | T2 T3 |
-| CSV-Export | Download | mittel | T9 |
-| Dashboard | nur lesen | niedrig | T5 T6 |
+| Zeiteintrag anlegen/bearbeiten | API /api/entries → DB | hoch (Kernfunktion) | T4 T10 T11 T12 T13 |
+| Einstellungen | localStorage "settings" | mittel | T4 T10 |
+| CSV-Export | Download | mittel | T14 |
+| Dashboard / Berichte | nur lesen, Tabellen | mittel | T2 T6 T8 T15 |
+| Login / Rollen | Server, Cookie | hoch | T12 T16 |
 ```
 
 Risiko hoch = Kernablauf, Geld, Daten anderer, schwer rückgängig zu machen, oft geändert.
@@ -38,7 +39,7 @@ Viele Fehler werfen keine Exception. Ob etwas falsch ist, erkennst du nur am Ver
 | **C** | Zusagen | Hält es, was README, Hilfetexte, Beschriftungen und Tooltips versprechen? („Export als CSV“ → ist es wirklich CSV und öffnet in Excel richtig?) |
 | **U** | Benutzererwartung | Würde ein normaler Benutzer verstehen, was passiert? Wird er vor Datenverlust gewarnt? |
 | **P** | Produkt | Ist es in sich stimmig? Gleiche Begriffe, gleiche Datumsformate, gleiche Fehlermeldungsart überall? |
-| **S** | Standards | WCAG (→ T6), Tastaturkonventionen, deutsches Zahlen-/Datumsformat, DSGVO-relevante Daten |
+| **S** | Standards | WCAG (→ T9), Tastaturkonventionen, deutsches Zahlen-/Datumsformat, DSGVO-relevante Daten |
 | **F** | Vertrautheit | Findet sich jemand ohne Erklärung zurecht? |
 | **E** | Erklärbarkeit | Kannst du das Verhalten erklären? Wenn nicht, ist es wahrscheinlich ein Fehler. |
 | **W** | Echte Welt | Andere Zeitzone, Sommerzeitwechsel, langer Name, langsames Netz, kleiner Bildschirm |
