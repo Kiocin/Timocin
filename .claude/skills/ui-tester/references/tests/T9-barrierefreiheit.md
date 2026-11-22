@@ -1,4 +1,4 @@
-# T6 – Barrierefreiheit und Tastaturbedienung
+# T9 – Barrierefreiheit und Tastaturbedienung
 
 **Ziel:** Die App ist ohne Maus, mit Screenreader und mit Vergrößerung bedienbar, nach WCAG 2.2 Stufe AA. Das betrifft nicht nur Menschen mit Behinderung: Tastaturbedienung und klare Beschriftungen helfen allen, und fehlende Namen machen auch automatisierte Tests unzuverlässig.
 
@@ -19,21 +19,21 @@ Schweregrade von axe: *critical* → kritisch, *serious* → hoch, *moderate* �
 
 **Wichtig:** Automatische Tests finden nur etwa ein Drittel der Probleme. Null axe-Befunde heißt nicht barrierefrei.
 
-## Manuell (mit Playwright, Szenario `T6-<name>.cjs`)
+## Manuell (mit Playwright, Szenario `T9-<name>.cjs`)
 
 | Prüfung | Wie |
 |---|---|
-| Kernablauf nur mit Tastatur | Ablauf aus T2 nur mit `Tab`, `Shift+Tab`, `Enter`, `Space`, Pfeiltasten. Geht alles? |
+| Kernablauf nur mit Tastatur | Ablauf aus T10 nur mit `Tab`, `Shift+Tab`, `Enter`, `Space`, Pfeiltasten. Geht alles? |
 | Dialoge | Öffnen → Fokus im Dialog? `Escape` schließt? Fokus kehrt danach zum auslösenden Button zurück? Tab bleibt im Dialog? |
 | Fehlermeldungen | Mit dem Feld verknüpft (`aria-describedby`) und angekündigt (`role=alert` / `aria-live`)? |
 | Reihenfolge | Tab-Reihenfolge entspricht der sichtbaren Reihenfolge? (Ausgabe von `a11y.json` → `keyboard.stops`) |
 | Namen | `page.accessibility.snapshot()` bzw. `locator.ariaSnapshot()` zeigt, was ein Screenreader vorliest. Icons ohne Text brauchen `aria-label`. |
-| Vergrößerung | Siehe T5 (200 %). Kein Inhalt darf verschwinden. |
+| Vergrößerung | Siehe T2 (200 %). Kein Inhalt darf verschwinden. |
 | Bewegung | `page.emulateMedia({ reducedMotion: 'reduce' })` → Animationen aus? |
 | Farbe | `page.emulateMedia({ colorScheme: 'dark' })` und `forcedColors: 'active'` → noch lesbar? |
 
 ```js
-await check('T6 Dialog: Escape schließt und Fokus kehrt zurück', async () => {
+await check('T9 Dialog: Escape schließt und Fokus kehrt zurück', async () => {
   const opener = page.getByRole('button', { name: /neu|hinzufügen/i });
   await opener.focus();
   await page.keyboard.press('Enter');

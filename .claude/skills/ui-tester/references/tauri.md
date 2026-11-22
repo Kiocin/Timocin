@@ -124,7 +124,7 @@ Hinweise:
 
 ## Weg C: tauri-driver (WebDriver) unter Windows/Linux
 
-Offizieller Weg für E2E-Tests der echten App. Er nutzt WebdriverIO statt Playwright. Die Skripte dieses Skills laufen damit nicht, die Szenarien aus `tests/T2`–`T9` lassen sich aber sinngemäß übertragen.
+Offizieller Weg für E2E-Tests der echten App. Er nutzt WebdriverIO statt Playwright. Die Skripte dieses Skills laufen damit nicht, die Szenarien aus `tests/T2`–`T16` lassen sich aber sinngemäß übertragen.
 
 Voraussetzungen:
 - `cargo install tauri-driver --locked`

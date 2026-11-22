@@ -1,15 +1,15 @@
-# T9 – Dateien, Dialoge und Fenster
+# T14 – Dateien, Dialoge und Fenster
 
 **Ziel:** Export, Import, Upload, Druck, Bestätigungsdialoge und neue Fenster funktionieren und liefern korrekte Inhalte.
 
-**Werkzeug:** Szenario `T9-<name>.cjs`.
+**Werkzeug:** Szenario `T14-<name>.cjs`.
 
 ## Export / Download
 
 Nicht nur prüfen, *dass* eine Datei kommt, sondern ihren *Inhalt*: Stimmen die Daten mit dem überein, was in der App steht?
 
 ```js
-await check('T9 CSV-Export enthält die angelegten Daten', async () => {
+await check('T14 CSV-Export enthält die angelegten Daten', async () => {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: /export|csv/i }).click(),
@@ -37,10 +37,10 @@ for (const f of [
   { name: 'gross.csv', mimeType: 'text/csv', buffer: Buffer.alloc(20 * 1024 * 1024, 'a') },
   { name: 'kaputt.csv', mimeType: 'text/csv', buffer: Buffer.from('"ungeschlossen;\n;;;;\n') },
 ]) {
-  await check(`T9 Upload ${f.name}`, async () => {
+  await check(`T14 Upload ${f.name}`, async () => {
     await input.setInputFiles(f);
     await page.waitForTimeout(800);
-    await page.screenshot({ path: path.join(OUT, `T9-upload-${f.name}.png`) });
+    await page.screenshot({ path: path.join(OUT, `T14-upload-${f.name}.png`) });
     assert((await page.locator('body').innerText()).trim().length > 0, 'leere Seite');
   });
 }
@@ -52,7 +52,7 @@ Bei Drag & Drop ohne `input[type=file]` das `DataTransfer`-Event per `page.evalu
 
 - `confirm`/`alert`/`prompt`: `page.on('dialog', d => d.dismiss())` *und* `d.accept()`. Beide Wege müssen sauber funktionieren.
 - `beforeunload` (Warnung vor ungespeicherten Änderungen): Formular ausfüllen, dann `page.close({ runBeforeUnload: true })` und prüfen, ob ein Dialog kommt.
-- Eigene Modals: siehe T6 (Fokus, Escape).
+- Eigene Modals: siehe T9 (Fokus, Escape).
 - **Native Dialoge** (Tauri Datei-öffnen/-speichern) sind keine Webseiten und lassen sich nicht per Playwright bedienen. Im Mock (`plugin:dialog|open`) einen festen Pfad zurückgeben, oder den Benutzer bitten.
 
 ## Neue Fenster und Tabs
